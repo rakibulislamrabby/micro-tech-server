@@ -19,7 +19,19 @@ async function run() {
         console.log('connected');
         const ProductsCollection = client.db("micro_tech").collection("products");
         const ordersCollection = client.db("micro_tech").collection("Orders");
+        const usersCollection = client.db("micro_tech").collection("users");
 
+        app.put("/user/:email", async (req, res) => {
+            const email = req.params.email;
+            const user = req.body;
+            const filter = { email: email };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: user
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc, options);
+            res.send(result);
+        })
         app.get("/product", async (req, res) => {
             const query = {};
             const cursor = ProductsCollection.find(query);
@@ -32,6 +44,14 @@ async function run() {
             const query = { _id: ObjectId(id) };
             const product = await ProductsCollection.findOne(query);
             res.send(product);
+        })
+
+        app.get("/order", async (req, res) => {
+            const buyer = req.query.buyer;
+            console.log("backend", buyer);
+            const query = { buyer: buyer };
+            const orders = await ordersCollection.find(query).toArray();
+            res.send(orders)
         })
 
         app.post("/order", async (req, res) => {
