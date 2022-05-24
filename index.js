@@ -39,6 +39,17 @@ async function run() {
         const ordersCollection = client.db("micro_tech").collection("Orders");
         const usersCollection = client.db("micro_tech").collection("users");
 
+        const verifyAdmin = async (req, res, next) => {
+            const requester = req.decoded.email;
+            const requesteraAccount = await usersCollection.findOne({ email: requester });
+            if (requesteraAccount.role === "admin") {
+                next();
+            }
+            else {
+                return res.status(403).send({ message: "Forbidden access" })
+            }
+        }
+
         app.get("/user", verifyJwt, async (req, res) => {
             const users = await usersCollection.find().toArray();
             res.send(users);
@@ -52,23 +63,14 @@ async function run() {
         })
 
         //make admin api
-        app.put("/user/admin/:email", verifyJwt, async (req, res) => {
+        app.put("/user/admin/:email", verifyJwt, verifyAdmin, async (req, res) => {
             const email = req.params.email;
-            const requester = req.decoded.email;
-            const requesteraAccount = await usersCollection.findOne({ email: requester });
-            if (requesteraAccount.role === "admin") {
-                const filter = { email: email };
-                const updateDoc = {
-                    $set: { role: "admin" }
-                };
-                const result = await usersCollection.updateOne(filter, updateDoc);
-                res.send(result);
-            }
-            else {
-                return res.status(403).send({ message: "Forbidden access" })
-            }
-
-
+            const filter = { email: email };
+            const updateDoc = {
+                $set: { role: "admin" }
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc);
+            res.send(result);
         })
         app.put("/user/:email", async (req, res) => {
             const email = req.params.email;
@@ -82,18 +84,38 @@ async function run() {
             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
             res.send({ result, token });
         })
+
+        //Display all products Api
         app.get("/product", async (req, res) => {
             const query = {};
             const cursor = ProductsCollection.find(query);
             const products = await cursor.toArray()
             res.send(products);
         });
+        //manage product just admin can see this
+        app.get("/manageproduct", verifyJwt, verifyAdmin, async (req, res) => {
+            const products = await ProductsCollection.find().toArray();
+            res.send(products);
+        });
+        //delete product
+        app.delete("/manageproduct/:id", verifyJwt, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) }
+            const result = await ProductsCollection.deleteOne(filter);
+            res.send(result);
+        });
+
 
         app.get("/product/:id", async (req, res) => {
             const id = req.params.id;
             const query = { _id: ObjectId(id) };
             const product = await ProductsCollection.findOne(query);
             res.send(product);
+        })
+        app.post("/product", verifyJwt, verifyAdmin, async (req, res) => {
+            const product = req.body;
+            const result = await ProductsCollection.insertOne(product);
+            res.send(result);
         })
 
         app.get("/order", verifyJwt, async (req, res) => {
@@ -108,6 +130,12 @@ async function run() {
                 return res.status(403).send({ message: "Forbidden access" })
             }
 
+        })
+
+        //manage all orders
+        app.get("/allOrder", async (req, res) => {
+            const products = await ordersCollection.find().toArray();
+            res.send(products);
         })
 
         app.post("/order", async (req, res) => {
