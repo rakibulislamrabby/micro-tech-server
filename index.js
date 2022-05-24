@@ -4,6 +4,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 const { status } = require('express/lib/response');
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -38,6 +39,7 @@ async function run() {
         const ProductsCollection = client.db("micro_tech").collection("products");
         const ordersCollection = client.db("micro_tech").collection("Orders");
         const usersCollection = client.db("micro_tech").collection("users");
+        const paymentsCollection = client.db("micro_tech").collection("payments");
 
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -49,6 +51,18 @@ async function run() {
                 return res.status(403).send({ message: "Forbidden access" })
             }
         }
+        app.post("/create-payment-intent", verifyJwt, async (req, res) => {
+            const order = req.body;
+            const price = order.price;
+            const amount = price * 100;
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+            res.send({ clientSecret: paymentIntent.client_secret });
+        });
+
 
         app.get("/user", verifyJwt, async (req, res) => {
             const users = await usersCollection.find().toArray();
@@ -130,6 +144,35 @@ async function run() {
                 return res.status(403).send({ message: "Forbidden access" })
             }
 
+        })
+        app.get("/order/:id", verifyJwt, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const order = await ordersCollection.findOne(query);
+            res.send(order);
+        })
+        //cancel order
+        app.delete("/order/:id", async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: ObjectId(id) }
+            const result = await ordersCollection.deleteOne(filter);
+            res.send(result);
+        })
+
+        //order update after payment
+        app.patch("/order/:id", async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
+            const filter = { _id: ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            }
+            const result = await paymentsCollection.insertOne(payment);
+            const updatedorder = await ordersCollection.updateOne(filter, updatedDoc);
+            res.send(updatedorder);
         })
 
         //manage all orders
