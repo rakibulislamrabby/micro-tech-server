@@ -40,6 +40,7 @@ async function run() {
         const ordersCollection = client.db("micro_tech").collection("Orders");
         const usersCollection = client.db("micro_tech").collection("users");
         const paymentsCollection = client.db("micro_tech").collection("payments");
+        const reviewsCollection = client.db("micro_tech").collection("reviews");
 
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -68,6 +69,7 @@ async function run() {
             const users = await usersCollection.find().toArray();
             res.send(users);
         })
+
 
         app.get("/admin/:email", async (req, res) => {
             const email = req.params.email;
@@ -185,6 +187,17 @@ async function run() {
             const order = req.body;
             const query = {};
             const result = await ordersCollection.insertOne(order);
+            res.send(result);
+        })
+
+        app.post("/review", verifyJwt, async (req, res) => {
+            const review = req.body;
+            console.log(review);
+            const result = await reviewsCollection.insertOne(review);
+            res.send(result);
+        })
+        app.get("/review", async (req, res) => {
+            const result = await reviewsCollection.find().toArray();
             res.send(result);
         })
     }
