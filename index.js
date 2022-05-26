@@ -41,7 +41,7 @@ async function run() {
         const usersCollection = client.db("micro_tech").collection("users");
         const paymentsCollection = client.db("micro_tech").collection("payments");
         const reviewsCollection = client.db("micro_tech").collection("reviews");
-        const userProfileCollection = client.db("micro_tech").collection("profileInfo");
+        const userProfileCollection = client.db("micro_tech").collection("profilesInfo");
 
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -102,25 +102,30 @@ async function run() {
             res.send({ result, token });
         })
         //make admin api
-        app.put("/user/profile/:email", verifyJwt, verifyAdmin, async (req, res) => {
-            const email = req.params.email;
-            const profile = req.body;
-            console.log(profile);
-            const filter = { email: email };
-            const options = { upsert: true };
-            const updateDoc = {
-                $set: profile
-            };
-            const result = await usersCollection.updateOne(filter, updateDoc, options);
-            res.send(result);
-        })
-        // app.post("/userProfile", async (req, res) => {
+        // app.put("/user/profile/:email", verifyJwt, verifyAdmin, async (req, res) => {
+        //     const email = req.params.email;
         //     const profile = req.body;
         //     console.log(profile);
-        //     const result = await userProfileCollection.insertOne(profile);
+        //     const filter = { email: email };
+        //     const options = { upsert: true };
+        //     const updateDoc = {
+        //         $set: profile
+        //     };
+        //     const result = await usersCollection.updateOne(filter, updateDoc, options);
         //     res.send(result);
         // })
-        app.get("/userProfile", async (req, res) => {
+        app.post("/userProfiles", verifyJwt, async (req, res) => {
+            try {
+                const profile = req.body;
+                console.log(profile);
+                const result = await userProfileCollection.insertOne(profile);
+                res.send(result);
+            }
+            catch (eee) {
+                console.log(eee);
+            }
+        })
+        app.get("/userProfiles/:email", async (req, res) => {
             const email = req.params.email;
             const query = { email: email }
             const result = await userProfileCollection.findOne(query);
