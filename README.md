@@ -11,4 +11,4 @@ Micro-Tech: Live Website Link [Micro-Tech](https://micro-tech-b6d08.web.app/).
 
 * and another function is check it is admin or not.When it full fill admin permission then extra access of this admin.
 * We use as the database in MongoDB.
-*
+* And all sensitive information is made private. This all works use .env file.

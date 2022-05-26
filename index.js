@@ -41,6 +41,7 @@ async function run() {
         const usersCollection = client.db("micro_tech").collection("users");
         const paymentsCollection = client.db("micro_tech").collection("payments");
         const reviewsCollection = client.db("micro_tech").collection("reviews");
+        const userProfileCollection = client.db("micro_tech").collection("profileInfo");
 
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -99,6 +100,31 @@ async function run() {
             const result = await usersCollection.updateOne(filter, updateDoc, options);
             const token = jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' });
             res.send({ result, token });
+        })
+        //make admin api
+        app.put("/user/profile/:email", verifyJwt, verifyAdmin, async (req, res) => {
+            const email = req.params.email;
+            const profile = req.body;
+            console.log(profile);
+            const filter = { email: email };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: profile
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc, options);
+            res.send(result);
+        })
+        // app.post("/userProfile", async (req, res) => {
+        //     const profile = req.body;
+        //     console.log(profile);
+        //     const result = await userProfileCollection.insertOne(profile);
+        //     res.send(result);
+        // })
+        app.get("/userProfile", async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email }
+            const result = await userProfileCollection.findOne(query);
+            res.send(result)
         })
 
         //Display all products Api
@@ -190,13 +216,12 @@ async function run() {
             res.send(result);
         })
 
-        app.post("/review", verifyJwt, async (req, res) => {
+        app.post("/reviews", verifyJwt, async (req, res) => {
             const review = req.body;
-            console.log(review);
             const result = await reviewsCollection.insertOne(review);
             res.send(result);
         })
-        app.get("/review", async (req, res) => {
+        app.get("/reviews", async (req, res) => {
             const result = await reviewsCollection.find().toArray();
             res.send(result);
         })
